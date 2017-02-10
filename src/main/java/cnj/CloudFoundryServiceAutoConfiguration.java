@@ -20,11 +20,12 @@ import org.springframework.retry.support.RetryTemplate;
 import java.util.Collections;
 
 /**
+ * supports high level Cloud Foundry operations. Intended to cover the bulk of the
+ * things a typical Cloud Foundry shell script might do.
  *
- * @author <a href="mailto:josh@joshlong.com">Josh Long</a>
  */
 @Configuration
-public class CloudFoundryDeploymentAutoConfiguration {
+public class CloudFoundryServiceAutoConfiguration {
 
 	@Bean
 	@ConditionalOnMissingBean
@@ -102,5 +103,11 @@ public class CloudFoundryDeploymentAutoConfiguration {
 				.organization(organization)
 				.space(space)
 				.build();
+	}
+
+	@Bean
+	@ConditionalOnMissingBean
+	public CloudFoundryService helper(DefaultCloudFoundryOperations cf) {
+		return new CloudFoundryService(cf);
 	}
 }

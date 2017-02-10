@@ -3,29 +3,24 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-
     <groupId>cnj</groupId>
     <artifactId>it-support</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <packaging>jar</packaging>
-
-
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
         <version>1.4.2.RELEASE</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
-
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <java.version>1.8</java.version>
         <cloudfoundry-client.version>2.3.0.RELEASE</cloudfoundry-client.version>
-        <reactor-netty.version>0.5.1.RELEASE</reactor-netty.version>
-        <reactor-core.version>3.0.3.RELEASE</reactor-core.version>
-     </properties>
-
+        <reactor-core.version>3.0.4.RELEASE</reactor-core.version>
+        <reactor-netty.version>0.6.0.RELEASE</reactor-netty.version>
+    </properties>
     <dependencies>
         <dependency>
             <groupId>org.springframework.retry</groupId>
@@ -46,7 +41,6 @@
             <artifactId>cloudfoundry-operations</artifactId>
             <version>${cloudfoundry-client.version}</version>
         </dependency>
-
         <dependency>
             <groupId>io.projectreactor</groupId>
             <artifactId>reactor-core</artifactId>
@@ -67,8 +61,6 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
-
-
     <repositories>
         <repository>
             <id>spring-releases</id>

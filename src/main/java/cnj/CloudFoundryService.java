@@ -69,7 +69,7 @@ public class CloudFoundryService {
 
 	public void pushApplicationUsingManifest(File jarFile, ApplicationManifest manifest) {
 
-		log.info("pushing application " + jarFile.getAbsolutePath() +
+		log.debug("pushing application " + jarFile.getAbsolutePath() +
 				" using manifest file " + manifest.toString());
 
 		PushApplicationRequest request = fromApplicationManifest(jarFile, manifest);
@@ -112,6 +112,7 @@ public class CloudFoundryService {
 
 	public void createUserProvidedServiceFromApplication(String appName) {
 		String urlForApplication = this.urlForApplication(appName);
+		this.destroyServiceIfExists(appName);
 		this.cf.services().createUserProvidedInstance(
 				CreateUserProvidedServiceInstanceRequest
 						.builder()
@@ -132,7 +133,7 @@ public class CloudFoundryService {
 	}
 
 	public Map<File, ApplicationManifest> applicationManifestFrom(File manifestFile) {
-		log.info("manifest: " + manifestFile.getAbsolutePath());
+		log.debug("manifest: " + manifestFile.getAbsolutePath());
 		YamlMapFactoryBean yamlMapFactoryBean = new YamlMapFactoryBean();
 		yamlMapFactoryBean.setResources(new FileSystemResource(manifestFile));
 		yamlMapFactoryBean.afterPropertiesSet();
@@ -218,14 +219,15 @@ public class CloudFoundryService {
 	public void createService(String svcName, String planName, String instanceName) {
 		log.debug("creating service " + svcName + " with plan " + planName +
 				" and instance name " + instanceName);
-
-		this.cf.services()
-				.createInstance(CreateServiceInstanceRequest.builder()
-						.planName(planName)
-						.serviceInstanceName(instanceName)
-						.serviceName(svcName)
-						.build())
-				.block();
+		if (!this.serviceExists(instanceName)) {
+			this.cf.services()
+					.createInstance(CreateServiceInstanceRequest.builder()
+							.planName(planName)
+							.serviceInstanceName(instanceName)
+							.serviceName(svcName)
+							.build())
+					.block();
+		}
 	}
 
 	public String urlForApplication(String appName) {
@@ -242,6 +244,7 @@ public class CloudFoundryService {
 	public boolean destroyApplicationIfExists(String appName) {
 		if (this.applicationExists(appName)) {
 			this.cf.applications().delete(DeleteApplicationRequest.builder().name(appName).build()).block();
+			log.debug("destroyed application " + appName);
 		}
 		return !this.applicationExists(appName);
 	}
@@ -260,6 +263,7 @@ public class CloudFoundryService {
 			this.cf.services().deleteInstance(
 					DeleteServiceInstanceRequest.builder().name(instance).build())
 					.block();
+			log.debug("destroyed service " + instance);
 			return !this.serviceExists(instance);
 		}
 		return true;
