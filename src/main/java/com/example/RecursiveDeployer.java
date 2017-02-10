@@ -46,7 +46,8 @@ class RecursiveDeployer {
 				log.debug(String.format("Symbolic link: %s ", file));
 			} else if (attr.isRegularFile()) {
 				log.debug(String.format("Regular file: %s ", file));
-			} else {
+			} else
+				{
 				log.debug(String.format("Other: %s ", file));
 			}
 			log.debug("(" + attr.size() + "bytes)");
