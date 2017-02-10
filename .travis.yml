@@ -8,5 +8,5 @@ cache:
     - $HOME/.m2/repository/
 
 script:
-  - ./mvnw test && ./mvnw deploy
+  -  ./mvnw deploy
 
