@@ -79,26 +79,29 @@ public class CloudFoundryService {
 			// todo either we need to bind the services or the environment variables.
 			// todo so let's be sure to handle that
 
-			manifest.getServices().forEach(svc -> {
-				cf.services().bind(BindServiceInstanceRequest.builder()
-						.applicationName(request.getName())
-						.serviceInstanceName(svc)
-						.build())
-						.block();
-				log.debug("bound service '" + svc + "' to '" + request.getName() + "'.");
-			});
+			if (manifest.getServices() != null) {
 
-			manifest.getEnvironmentVariables().forEach((e, v) -> {
-				cf.applications().setEnvironmentVariable(
-						SetEnvironmentVariableApplicationRequest.builder()
-								.name(request.getName())
-								.variableName(e)
-								.variableValue("" + v)
-								.build())
-						.block();
-				log.debug("set environment variable '" + e + "' to the value '" + v + "'");
-			});
-
+				manifest.getServices().forEach(svc -> {
+					cf.services().bind(BindServiceInstanceRequest.builder()
+							.applicationName(request.getName())
+							.serviceInstanceName(svc)
+							.build())
+							.block();
+					log.debug("bound service '" + svc + "' to '" + request.getName() + "'.");
+				});
+			}
+			if (manifest.getEnvironmentVariables() != null) {
+				manifest.getEnvironmentVariables().forEach((e, v) -> {
+					cf.applications().setEnvironmentVariable(
+							SetEnvironmentVariableApplicationRequest.builder()
+									.name(request.getName())
+									.variableName(e)
+									.variableValue("" + v)
+									.build())
+							.block();
+					log.debug("set environment variable '" + e + "' to the value '" + v + "'");
+				});
+			}
 			cf.applications()
 					.start(StartApplicationRequest.builder()
 							.name(request.getName()).build())
