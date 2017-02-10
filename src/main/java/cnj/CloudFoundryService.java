@@ -99,7 +99,8 @@ public class CloudFoundryService {
 									.variableValue("" + v)
 									.build())
 							.block();
-					log.debug("set environment variable '" + e + "' to the value '" + v + "'");
+					log.debug("set environment variable '" + e + "' to the value '" + v + "' for application "
+							+ request.getName());
 				});
 			}
 			cf.applications()
