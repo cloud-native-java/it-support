@@ -1,6 +1,8 @@
 target/
 pom.xml.tag
+.idea
 pom.xml.releaseBackup
+*.iml
 pom.xml.versionsBackup
 pom.xml.next
 release.properties
