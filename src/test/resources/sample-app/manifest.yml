@@ -1,0 +1,12 @@
+---
+applications:
+- name: cf-it-greetings-service
+  instances: 1
+  host: cf-it-greetings-service-${random-word}
+  path: hi.jar
+  buildpack: https://github.com/cloudfoundry/java-buildpack.git
+  services:
+    - batch-mysql
+  env:
+    DEBUG: "true"
+    SPRING_PROFILES_ACTIVE: cloud
