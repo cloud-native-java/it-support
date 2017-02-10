@@ -6,10 +6,10 @@ import org.cloudfoundry.operations.CloudFoundryOperations;
 import org.cloudfoundry.operations.applications.*;
 import org.cloudfoundry.operations.services.BindServiceInstanceRequest;
 import org.cloudfoundry.operations.services.CreateServiceInstanceRequest;
+import org.cloudfoundry.operations.services.CreateUserProvidedServiceInstanceRequest;
 import org.cloudfoundry.operations.services.DeleteServiceInstanceRequest;
 import org.springframework.beans.factory.config.YamlMapFactoryBean;
 import org.springframework.core.io.FileSystemResource;
-import org.springframework.retry.support.RetryTemplate;
 import org.springframework.util.StringUtils;
 import reactor.core.publisher.Mono;
 
@@ -26,30 +26,27 @@ public class CloudFoundryService {
 
 	private Log log = LogFactory.getLog(getClass());
 	private final CloudFoundryOperations cf;
-	private final RetryTemplate rt;
 
-	public CloudFoundryService(CloudFoundryOperations cf,
-	                           RetryTemplate rt) {
+	public CloudFoundryService(CloudFoundryOperations cf) {
 		this.cf = cf;
-		this.rt = rt;
 	}
 
-	public void deleteOrphanedRoutes() {
+	public void destroyOrphanedRoutes() {
 		this.cf.routes().deleteOrphanedRoutes().block();
 	}
 
-	public void createMarketplaceServiceIfMissing(
+	public void createServiceIfMissing(
 			String svcName,
 			String planName,
 			String instanceName) {
 
-		if (!this.marketplaceServiceExists(instanceName)) {
+		if (!this.serviceExists(instanceName)) {
 			log.debug("could not find " + svcName + ", so creating it.");
-			this.createMarketplaceService(svcName, planName, instanceName);
+			this.createService(svcName, planName, instanceName);
 		}
 	}
 
-	public boolean marketplaceServiceExists(String instanceName) {
+	public boolean serviceExists(String instanceName) {
 		Mono<Boolean> mono = this.cf.services()
 				.listInstances()
 				.filter(si -> si.getName().equals(instanceName))
@@ -111,6 +108,27 @@ public class CloudFoundryService {
 
 	public void pushApplicationUsingManifest(File manifestFile) {
 		this.applicationManifestFrom(manifestFile).forEach(this::pushApplicationUsingManifest);
+	}
+
+	public void createUserProvidedServiceFromApplication(String appName) {
+		String urlForApplication = this.urlForApplication(appName);
+		this.cf.services().createUserProvidedInstance(
+				CreateUserProvidedServiceInstanceRequest
+						.builder()
+						.name(appName)
+						.credentials(Collections.singletonMap("uri", urlForApplication))
+						.build())
+				.block();
+	}
+
+	public void pushApplicationAndCreateUserDefinedServiceUsingManifest(File manifestFile) {
+		Map<File, ApplicationManifest> applicationManifestMap = this.applicationManifestFrom(manifestFile);
+		applicationManifestMap.forEach(this::pushApplicationAndCreateUserDefinedServiceUsingManifest);
+	}
+
+	public void pushApplicationAndCreateUserDefinedServiceUsingManifest(File jar, ApplicationManifest manifest) {
+		this.pushApplicationUsingManifest(jar, manifest);
+		this.createUserProvidedServiceFromApplication(manifest.getName());
 	}
 
 	public Map<File, ApplicationManifest> applicationManifestFrom(File manifestFile) {
@@ -197,7 +215,7 @@ public class CloudFoundryService {
 		return builder.build();
 	}
 
-	public void createMarketplaceService(String svcName, String planName, String instanceName) {
+	public void createService(String svcName, String planName, String instanceName) {
 		log.debug("creating service " + svcName + " with plan " + planName +
 				" and instance name " + instanceName);
 
@@ -221,10 +239,29 @@ public class CloudFoundryService {
 				.block();
 	}
 
-	public boolean destroyMarketplaceService(String instance) {
-		this.cf.services().deleteInstance(
-				DeleteServiceInstanceRequest.builder().name(instance).build())
+	public boolean destroyApplicationIfExists(String appName) {
+		if (this.applicationExists(appName)) {
+			this.cf.applications().delete(DeleteApplicationRequest.builder().name(appName).build()).block();
+		}
+		return !this.applicationExists(appName);
+	}
+
+	public boolean applicationExists(String appName) {
+		return this.cf.applications()
+				.list()
+				.filter(si -> si.getName().equals(appName))
+				.singleOrEmpty()
+				.hasElement()
 				.block();
-		return !this.marketplaceServiceExists(instance);
+	}
+
+	public boolean destroyServiceIfExists(String instance) {
+		if (this.serviceExists(instance)) {
+			this.cf.services().deleteInstance(
+					DeleteServiceInstanceRequest.builder().name(instance).build())
+					.block();
+			return !this.serviceExists(instance);
+		}
+		return true;
 	}
 }

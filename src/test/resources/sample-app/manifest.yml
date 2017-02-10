@@ -6,7 +6,7 @@ applications:
   path: hi.jar
   buildpack: https://github.com/cloudfoundry/java-buildpack.git
   services:
-    - batch-mysql
+    - cf-it-greetings-service-mysql
   env:
     DEBUG: "true"
     SPRING_PROFILES_ACTIVE: cloud
