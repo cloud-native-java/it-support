@@ -36,6 +36,33 @@ public class CloudFoundryService {
 		this.cf.routes().deleteOrphanedRoutes().block();
 	}
 
+	public void destroyApplicationUsingManifest(File file) {
+		this.applicationManifestFrom(file).forEach((f, am) -> {
+			destroyApplicationIfExists(am.getName());
+			destroyServiceIfExistsSafely(am.getName());
+			am.getServices().forEach(this::destroyServiceIfExistsSafely);
+			destroyOrphanedRoutes();
+		});
+	}
+
+	private void destroyServiceIfExistsSafely (String svcName) {
+		try {
+			this.destroyServiceIfExists(svcName);
+		}
+		catch (Throwable th ){
+			log.debug("couldn't destroy " +  svcName + ". This could be because of a number of reasons, " +
+					"including that some other service is bound to this application.");
+		}
+	}
+
+	public Map<String, ApplicationManifest> applicationManifestsFrom(File... files) {
+		Map<String, ApplicationManifest> manifestMap = new HashMap<>();
+		for (File f : files) {
+			this.applicationManifestFrom(f).forEach((ff, m) -> manifestMap.put(m.getName(), m));
+		}
+		return manifestMap;
+	}
+
 	public void createServiceIfMissing(
 			String svcName,
 			String planName,
@@ -196,6 +223,7 @@ public class CloudFoundryService {
 		return deployManifest;
 
 	}
+
 
 	public PushApplicationRequest fromApplicationManifest(
 			File path,

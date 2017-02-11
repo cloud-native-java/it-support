@@ -22,7 +22,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Map;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -74,33 +73,7 @@ public class CloudFoundryServiceTest {
 
 	@After
 	public void clean() throws Throwable {
-		Map<File, ApplicationManifest> applicationManifestMap = null;
-		try {
-			applicationManifestMap = this.cloudFoundryService.applicationManifestFrom(this.manifestFile);
-			if (null != applicationManifestMap) {
-				applicationManifestMap
-						.forEach((f, am) -> {
-							this.cloudFoundryService.destroyApplicationIfExists(am.getName());
-							this.cloudFoundryService.destroyServiceIfExists(am.getName());
-							am.getServices().forEach(svc -> this.cloudFoundryService.destroyServiceIfExists(svc));
-						});
-			}
-
-		} catch (Throwable t) {
-			// don't care
-		}
-
-		try {
-			this.cloudFoundryService.destroyOrphanedRoutes();
-		} catch (Throwable t) {
-			// don't care
-		}
-		try {
-			Stream.of(this.manifestFile, this.jarFile).forEach(f ->
-					assertTrue("destroyed " + f.getAbsolutePath(), f.exists() || f.delete()));
-		} catch (Throwable t) {
-			// don't care
-		}
+		this.cloudFoundryService.destroyApplicationUsingManifest(this.manifestFile);
 	}
 
 	@Test
