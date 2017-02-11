@@ -37,20 +37,21 @@ public class CloudFoundryService {
 	}
 
 	public void destroyApplicationUsingManifest(File file) {
-		this.applicationManifestFrom(file).forEach((f, am) -> {
-			destroyApplicationIfExists(am.getName());
-			destroyServiceIfExistsSafely(am.getName());
-			am.getServices().forEach(this::destroyServiceIfExistsSafely);
-			destroyOrphanedRoutes();
-		});
+		Optional.ofNullable(file)
+				.ifPresent(manifestFile -> applicationManifestFrom(manifestFile).forEach((f, am) -> {
+					destroyApplicationIfExists(am.getName());
+					destroyServiceIfExistsSafely(am.getName());
+					am.getServices().forEach(x -> destroyServiceIfExistsSafely(x));
+					destroyOrphanedRoutes();
+				}));
+
 	}
 
-	private void destroyServiceIfExistsSafely (String svcName) {
+	private void destroyServiceIfExistsSafely(String svcName) {
 		try {
 			this.destroyServiceIfExists(svcName);
-		}
-		catch (Throwable th ){
-			log.debug("couldn't destroy " +  svcName + ". This could be because of a number of reasons, " +
+		} catch (Throwable th) {
+			log.debug("couldn't destroy " + svcName + ". This could be because of a number of reasons, " +
 					"including that some other service is bound to this application.");
 		}
 	}
