@@ -1,5 +1,7 @@
 language: java
 
+sudo: required
+
 jdk:
   - oraclejdk8
 
@@ -8,5 +10,6 @@ cache:
     - $HOME/.m2/repository/
 
 script:
-  -  ./mvnw deploy
+  -  mvn -e -P integration-test verify deploy
+
 
