@@ -10,6 +10,7 @@ import org.cloudfoundry.operations.services.CreateUserProvidedServiceInstanceReq
 import org.cloudfoundry.operations.services.DeleteServiceInstanceRequest;
 import org.springframework.beans.factory.config.YamlMapFactoryBean;
 import org.springframework.core.io.FileSystemResource;
+import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 import reactor.core.publisher.Mono;
 
@@ -73,11 +74,25 @@ public class CloudFoundryService {
 				" using manifest file " + manifest.toString());
 
 		PushApplicationRequest request = fromApplicationManifest(jarFile, manifest);
+
+		if (this.applicationExists(manifest.getName())) {
+			cf.applications().delete(
+					DeleteApplicationRequest
+							.builder()
+							.name(manifest.getName())
+							.deleteRoutes(true)
+							.build())
+					.block();
+			log.debug("deleted the existing application instance " + manifest.getName() +
+					"if it exists.");
+		}
 		cf.applications().push(request).block();
 
 		if (request.getNoStart() != null && request.getNoStart()) {
 			// todo either we need to bind the services or the environment variables.
 			// todo so let's be sure to handle that
+			Assert.notNull(manifest,
+					"the manifest for application " + jarFile.getAbsolutePath() + " is null! Can't proceed.");
 
 			if (manifest.getServices() != null) {
 
