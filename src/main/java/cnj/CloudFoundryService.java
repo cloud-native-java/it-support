@@ -39,13 +39,17 @@ public class CloudFoundryService {
 	public void destroyApplicationUsingManifest(File file) {
 		Optional.ofNullable(file)
 				.ifPresent(manifestFile -> applicationManifestFrom(manifestFile).forEach((f, am) -> {
+
 					destroyApplicationIfExists(am.getName());
 					destroyServiceIfExistsSafely(am.getName());
-					am.getServices().forEach(x -> destroyServiceIfExistsSafely(x));
+					Optional.ofNullable(am.getServices())
+							.ifPresent(svcs -> svcs.forEach(this::destroyServiceIfExistsSafely));
+
 					destroyOrphanedRoutes();
 				}));
 
 	}
+
 
 	private void destroyServiceIfExistsSafely(String svcName) {
 		try {
