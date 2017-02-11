@@ -25,6 +25,7 @@ import java.util.Collections;
  *
  */
 @Configuration
+//@EnableRetry
 public class CloudFoundryServiceAutoConfiguration {
 
 	@Bean

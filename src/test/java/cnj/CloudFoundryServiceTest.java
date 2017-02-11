@@ -107,7 +107,8 @@ public class CloudFoundryServiceTest {
 	public void testPushingApplicationWithManifest() throws Exception {
 		try {
 
-			Map<File, ApplicationManifest> applicationManifestMap = this.cloudFoundryService.applicationManifestFrom(this.manifestFile);
+			Map<File, ApplicationManifest> applicationManifestMap =
+					this.cloudFoundryService.applicationManifestFrom(this.manifestFile);
 
 			String appName = applicationManifestMap.values().iterator().next().getName();
 
