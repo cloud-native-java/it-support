@@ -23,7 +23,6 @@ import java.nio.file.Files;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 
@@ -73,6 +72,8 @@ public class CloudFoundryServiceTest {
 
 	@After
 	public void clean() throws Throwable {
+
+
 		this.cloudFoundryService.destroyApplicationUsingManifest(this.manifestFile);
 	}
 
@@ -134,13 +135,8 @@ public class CloudFoundryServiceTest {
 
 	@Test
 	public void ensureServiceIsAvailable() throws Exception {
-		try {
 			assertTrue("the " + instance + " service should exist.",
 					this.cloudFoundryService.serviceExists(instance));
-		} finally {
-			this.cloudFoundryService.destroyServiceIfExists(instance);
-			assertFalse("the " + instance + "service should not exist.",
-					this.cloudFoundryService.serviceExists(instance));
-		}
+
 	}
 }
