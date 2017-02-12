@@ -197,7 +197,7 @@ public class CloudFoundryService {
 
 		String sanitize(String k, String v) {
 			try {
-				return String.class.cast(sanitizeMethod.invoke(sanitizerObject, k, v));
+				return String.class.cast(sanitizeMethod.invoke(sanitizerObject, ""+k.toLowerCase(), v));
 			} catch (Exception e) {
 				log.debug("couldn't sanitize value for key " + k + ".");
 				log.error(e);
