@@ -115,8 +115,7 @@ public class CloudFoundryService {
 							.deleteRoutes(true)
 							.build())
 					.block();
-			log.debug("deleted the existing application instance " + manifest.getName() +
-					"if it exists.");
+			log.debug("deleted existing application instance " + manifest.getName());
 		}
 		cf.applications().push(request).block();
 
