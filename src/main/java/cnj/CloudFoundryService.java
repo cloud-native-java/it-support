@@ -4,10 +4,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.cloudfoundry.operations.CloudFoundryOperations;
 import org.cloudfoundry.operations.applications.*;
-import org.cloudfoundry.operations.services.BindServiceInstanceRequest;
-import org.cloudfoundry.operations.services.CreateServiceInstanceRequest;
-import org.cloudfoundry.operations.services.CreateUserProvidedServiceInstanceRequest;
-import org.cloudfoundry.operations.services.DeleteServiceInstanceRequest;
+import org.cloudfoundry.operations.services.*;
 import org.springframework.beans.factory.config.YamlMapFactoryBean;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.util.Assert;
@@ -162,14 +159,25 @@ public class CloudFoundryService {
 
 	public void createUserProvidedServiceFromApplication(String appName) {
 		String urlForApplication = this.urlForApplication(appName);
-		this.destroyServiceIfExists(appName);
-		this.cf.services().createUserProvidedInstance(
-				CreateUserProvidedServiceInstanceRequest
-						.builder()
-						.name(appName)
-						.credentials(Collections.singletonMap("uri", urlForApplication))
-						.build())
-				.block();
+		boolean exists = this.serviceExists(appName);
+		if (!exists) {
+			this.cf.services().createUserProvidedInstance(
+					CreateUserProvidedServiceInstanceRequest
+							.builder()
+							.name(appName)
+							.credentials(Collections.singletonMap("uri", urlForApplication))
+							.build())
+					.block();
+		}
+		else {
+			this.cf.services().updateUserProvidedInstance(
+					UpdateUserProvidedServiceInstanceRequest
+							.builder()
+							.userProvidedServiceInstanceName(appName)
+							.credentials(Collections.singletonMap("uri", urlForApplication))
+							.build())
+					.block();
+		}
 	}
 
 	public void pushApplicationAndCreateUserDefinedServiceUsingManifest(File manifestFile) {
