@@ -12,6 +12,8 @@ import org.springframework.util.StringUtils;
 import reactor.core.publisher.Mono;
 
 import java.io.File;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
 import java.util.*;
 
 /**
@@ -22,6 +24,7 @@ import java.util.*;
  */
 public class CloudFoundryService {
 
+	private Sanitizer sanitizer = new Sanitizer();
 	private Log log = LogFactory.getLog(getClass());
 	private final CloudFoundryOperations cf;
 
@@ -32,6 +35,7 @@ public class CloudFoundryService {
 	public void destroyOrphanedRoutes() {
 		this.cf.routes().deleteOrphanedRoutes().block();
 	}
+
 
 	public void destroyApplicationUsingManifest(File file) {
 		Optional.ofNullable(file)
@@ -46,7 +50,6 @@ public class CloudFoundryService {
 				}));
 
 	}
-
 
 	private void destroyServiceIfExistsSafely(String svcName) {
 		try {
@@ -104,21 +107,9 @@ public class CloudFoundryService {
 
 		PushApplicationRequest request = fromApplicationManifest(jarFile, manifest);
 
-/*		if (this.applicationExists(manifest.getName())) {
-			cf.applications().delete(
-					DeleteApplicationRequest
-							.builder()
-							.name(manifest.getName())
-							.deleteRoutes(true)
-							.build())
-					.block();
-			log.debug("deleted existing application instance " + manifest.getName());
-		}*/
 		cf.applications().push(request).block();
 
 		if (request.getNoStart() != null && request.getNoStart()) {
-			// todo either we need to bind the services or the environment variables.
-			// todo so let's be sure to handle that
 			Assert.notNull(manifest,
 					"the manifest for application " + jarFile.getAbsolutePath() + " is null! Can't proceed.");
 
@@ -142,7 +133,7 @@ public class CloudFoundryService {
 									.variableValue("" + v)
 									.build())
 							.block();
-					log.debug("set environment variable '" + e + "' to the value '" + v + "' for application "
+					log.debug("set environment variable '" + e + "' to the value '" + this.sanitizer.sanitize(e, "" + v) + "' for application "
 							+ request.getName());
 				});
 			}
@@ -152,6 +143,7 @@ public class CloudFoundryService {
 					.block();
 		}
 	}
+
 
 	public void pushApplicationUsingManifest(File manifestFile) {
 		this.applicationManifestFrom(manifestFile).forEach(this::pushApplicationUsingManifest);
@@ -168,8 +160,7 @@ public class CloudFoundryService {
 							.credentials(Collections.singletonMap("uri", urlForApplication))
 							.build())
 					.block();
-		}
-		else {
+		} else {
 			this.cf.services().updateUserProvidedInstance(
 					UpdateUserProvidedServiceInstanceRequest
 							.builder()
@@ -177,6 +168,41 @@ public class CloudFoundryService {
 							.credentials(Collections.singletonMap("uri", urlForApplication))
 							.build())
 					.block();
+		}
+	}
+
+
+	/**
+	 * @apiNote do <em>not</em> use this class!
+	 */
+	private static class Sanitizer {
+
+		private final Log log = LogFactory.getLog(getClass());
+		private Method sanitizeMethod;
+		private Object sanitizerObject;
+
+		Sanitizer() {
+			try {
+				String sanitizerClass = "org.springframework.boot.actuate.endpoint.Sanitizer";
+				Class<?> sanitizer = Class.forName(sanitizerClass);
+				Constructor<?> ctor = sanitizer.getDeclaredConstructor();
+				ctor.setAccessible(true);
+				this.sanitizerObject = ctor.newInstance();
+				this.sanitizeMethod = sanitizer.getMethod("sanitize", String.class, Object.class);
+				this.sanitizeMethod.setAccessible(true);
+			} catch (Throwable th) {
+				this.log.error(th);
+			}
+		}
+
+		String sanitize(String k, String v) {
+			try {
+				return String.class.cast(sanitizeMethod.invoke(sanitizerObject, k, v));
+			} catch (Exception e) {
+				log.debug("couldn't sanitize value for key " + k + ".");
+				log.error(e);
+			}
+			return v;
 		}
 	}
 
