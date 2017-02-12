@@ -107,7 +107,7 @@ public class CloudFoundryService {
 
 		PushApplicationRequest request = fromApplicationManifest(jarFile, manifest);
 
-		if (this.applicationExists(manifest.getName())) {
+/*		if (this.applicationExists(manifest.getName())) {
 			cf.applications().delete(
 					DeleteApplicationRequest
 							.builder()
@@ -116,7 +116,7 @@ public class CloudFoundryService {
 							.build())
 					.block();
 			log.debug("deleted existing application instance " + manifest.getName());
-		}
+		}*/
 		cf.applications().push(request).block();
 
 		if (request.getNoStart() != null && request.getNoStart()) {
