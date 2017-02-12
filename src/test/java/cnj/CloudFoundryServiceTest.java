@@ -66,42 +66,28 @@ public class CloudFoundryServiceTest {
 		String txt = Files.readAllLines(this.manifestFile.toPath())
 				.stream()
 				.collect(Collectors.joining(System.lineSeparator()));
-		this.log.debug("contents of manifest to read? " + txt);
+		this.log.debug("manifest: ");
+		this.log.debug(txt);
 		this.cloudFoundryService.createServiceIfMissing(svc, plan, instance);
 	}
 
 	@After
 	public void clean() throws Throwable {
-
-
 		this.cloudFoundryService.destroyApplicationUsingManifest(this.manifestFile);
 	}
 
 	@Test
 	public void testPushingApplicationWithManifest() throws Exception {
-		try {
 
-			Map<File, ApplicationManifest> applicationManifestMap =
-					this.cloudFoundryService.applicationManifestFrom(this.manifestFile);
-
-			String appName = applicationManifestMap.values().iterator().next().getName();
-
-			log.info("attempting to push the application " + appName +
-					" as a user-provided-service (also called " + appName + ")");
-
-			Assert.assertTrue(!this.cloudFoundryService.applicationExists(appName));
-			Assert.assertTrue(!this.cloudFoundryService.serviceExists(appName));
-
-			applicationManifestMap
-					.forEach(this.cloudFoundryService::pushApplicationAndCreateUserDefinedServiceUsingManifest);
-
-			Assert.assertTrue(this.cloudFoundryService.applicationExists(appName));
-			Assert.assertTrue(this.cloudFoundryService.serviceExists(appName));
-		} catch (Exception e) {
-			log.error("error when trying to push application using manifest file "
-					+ manifestFile.getAbsolutePath(), e);
-			throw new RuntimeException("oops! " + e);
-		}
+		this.cloudFoundryService.applicationManifestFrom(this.manifestFile)
+				.forEach((jar, manifestFile) -> {
+					String appName = manifestFile.getName();
+					Assert.assertTrue(!this.cloudFoundryService.applicationExists(appName));
+					log.info("attempting to push the application " + appName +
+							" as a user-provided-service (also called " + appName + ")");
+					this.cloudFoundryService.pushApplicationUsingManifest(this.manifestFile);
+					Assert.assertTrue(this.cloudFoundryService.applicationExists(appName));
+				});
 	}
 
 	@Test
@@ -135,8 +121,8 @@ public class CloudFoundryServiceTest {
 
 	@Test
 	public void ensureServiceIsAvailable() throws Exception {
-			assertTrue("the " + instance + " service should exist.",
-					this.cloudFoundryService.serviceExists(instance));
+		assertTrue("the " + instance + " service should exist.",
+				this.cloudFoundryService.serviceExists(instance));
 
 	}
 }
