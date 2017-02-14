@@ -20,12 +20,12 @@ import org.springframework.retry.support.RetryTemplate;
 import java.util.Collections;
 
 /**
- * supports high level Cloud Foundry operations. Intended to cover the bulk of the
- * things a typical Cloud Foundry shell script might do.
- *
+ * supports high level Cloud Foundry operations.
+ * Intended to cover the bulk of the things a
+ * typical Cloud Foundry shell script might do.
  */
 @Configuration
-//@EnableRetry
+// @EnableRetry
 public class CloudFoundryServiceAutoConfiguration {
 
 	@Bean
@@ -33,30 +33,25 @@ public class CloudFoundryServiceAutoConfiguration {
 	public RetryTemplate retryTemplate() {
 		RetryTemplate rt = new RetryTemplate();
 		rt.setBackOffPolicy(new ExponentialBackOffPolicy());
-		rt.setRetryPolicy(new SimpleRetryPolicy(20,
-				Collections.singletonMap(RuntimeException.class, true)));
+		rt.setRetryPolicy(new SimpleRetryPolicy(20, Collections.singletonMap(
+				RuntimeException.class, true)));
 		return rt;
 	}
 
 	@Bean
 	@ConditionalOnMissingBean
 	public ReactorCloudFoundryClient cloudFoundryClient(
-			ConnectionContext connectionContext,
-			TokenProvider tokenProvider) {
-		return ReactorCloudFoundryClient
-				.builder()
-				.connectionContext(connectionContext)
-				.tokenProvider(tokenProvider)
-				.build();
+			ConnectionContext connectionContext, TokenProvider tokenProvider) {
+		return ReactorCloudFoundryClient.builder().connectionContext(connectionContext)
+				.tokenProvider(tokenProvider).build();
 	}
 
 	@Bean
 	@ConditionalOnMissingBean
-	public ReactorDopplerClient dopplerClient(ConnectionContext connectionContext, TokenProvider tokenProvider) {
-		return ReactorDopplerClient.builder()
-				.connectionContext(connectionContext)
-				.tokenProvider(tokenProvider)
-				.build();
+	public ReactorDopplerClient dopplerClient(ConnectionContext connectionContext,
+			TokenProvider tokenProvider) {
+		return ReactorDopplerClient.builder().connectionContext(connectionContext)
+				.tokenProvider(tokenProvider).build();
 	}
 
 	@Bean
@@ -65,45 +60,34 @@ public class CloudFoundryServiceAutoConfiguration {
 		if (apiHost.contains("://")) {
 			apiHost = apiHost.split("://")[1];
 		}
-		return DefaultConnectionContext.builder()
-				.apiHost(apiHost)
-				.build();
+		return DefaultConnectionContext.builder().apiHost(apiHost).build();
 	}
 
 	@Bean
 	@ConditionalOnMissingBean
-	ReactorUaaClient uaaClient(ConnectionContext connectionContext, TokenProvider tokenProvider) {
-		return ReactorUaaClient.builder()
-				.connectionContext(connectionContext)
-				.tokenProvider(tokenProvider)
-				.build();
+	ReactorUaaClient uaaClient(ConnectionContext connectionContext,
+			TokenProvider tokenProvider) {
+		return ReactorUaaClient.builder().connectionContext(connectionContext)
+				.tokenProvider(tokenProvider).build();
 	}
 
 	@Bean
 	@ConditionalOnMissingBean
 	public PasswordGrantTokenProvider tokenProvider(@Value("${cf.user}") String username,
-	                                                @Value("${cf.password}") String password) {
-		return PasswordGrantTokenProvider.builder()
-				.password(password)
-				.username(username)
+			@Value("${cf.password}") String password) {
+		return PasswordGrantTokenProvider.builder().password(password).username(username)
 				.build();
 	}
 
 	@Bean
 	@ConditionalOnMissingBean
 	public DefaultCloudFoundryOperations cloudFoundryOperations(
-			CloudFoundryClient cloudFoundryClient,
-			ReactorDopplerClient dopplerClient,
-			ReactorUaaClient uaaClient,
-			@Value("${cf.org}") String organization,
+			CloudFoundryClient cloudFoundryClient, ReactorDopplerClient dopplerClient,
+			ReactorUaaClient uaaClient, @Value("${cf.org}") String organization,
 			@Value("${cf.space}") String space) {
-		return DefaultCloudFoundryOperations.builder()
-				.cloudFoundryClient(cloudFoundryClient)
-				.dopplerClient(dopplerClient)
-				.uaaClient(uaaClient)
-				.organization(organization)
-				.space(space)
-				.build();
+		return DefaultCloudFoundryOperations.builder().cloudFoundryClient(cloudFoundryClient)
+				.dopplerClient(dopplerClient).uaaClient(uaaClient).organization(organization)
+				.space(space).build();
 	}
 
 	@Bean

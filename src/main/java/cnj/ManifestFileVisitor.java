@@ -16,28 +16,29 @@ import static java.nio.file.FileVisitResult.CONTINUE;
 // TODO it deploy everything it found with a {@literal manifest.yml} file in it.
 
 /**
- * @author <a href="mailto:josh@joshlong.com">Josh Long</a>
+ * @author <a href="mailto:josh@joshlong.com">Josh
+ * Long</a>
  */
 @Deprecated
-class ManifestFileVisitor
-		extends SimpleFileVisitor<Path> {
+class ManifestFileVisitor extends SimpleFileVisitor<Path> {
 
-	private Log log = LogFactory.getLog(getClass());
 	private final CloudFoundryOperations cloudFoundryOperations;
+	private Log log = LogFactory.getLog(getClass());
 
 	ManifestFileVisitor(CloudFoundryOperations cloudFoundryOperations) {
 		this.cloudFoundryOperations = cloudFoundryOperations;
 	}
 
 	@Override
-	public FileVisitResult visitFile(
-			Path file, BasicFileAttributes attr) {
+	public FileVisitResult visitFile(Path file, BasicFileAttributes attr) {
 
 		if (attr.isSymbolicLink()) {
 			log.debug(String.format("Symbolic link: %s ", file));
-		} else if (attr.isRegularFile()) {
+		}
+		else if (attr.isRegularFile()) {
 			log.debug(String.format("Regular file: %s ", file));
-		} else {
+		}
+		else {
 			log.debug(String.format("Other: %s ", file));
 		}
 		log.debug("(" + attr.size() + "bytes)");
@@ -47,17 +48,14 @@ class ManifestFileVisitor
 	}
 
 	@Override
-	public FileVisitResult postVisitDirectory(Path dir,
-	                                          IOException exc) {
+	public FileVisitResult postVisitDirectory(Path dir, IOException exc) {
 		log.debug(String.format("Directory: %s%n", dir));
 		return CONTINUE;
 	}
 
 	@Override
-	public FileVisitResult visitFileFailed(Path file,
-	                                       IOException exception) {
-		log.error("something went wrong visiting file "
-				+ file.getFileName() + ".", exception);
+	public FileVisitResult visitFileFailed(Path file, IOException exception) {
+		log.error("something went wrong visiting file " + file.getFileName() + ".", exception);
 		return CONTINUE;
 	}
 }
