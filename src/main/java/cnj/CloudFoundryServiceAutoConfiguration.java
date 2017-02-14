@@ -19,13 +19,7 @@ import org.springframework.retry.support.RetryTemplate;
 
 import java.util.Collections;
 
-/**
- * supports high level Cloud Foundry operations.
- * Intended to cover the bulk of the things a
- * typical Cloud Foundry shell script might do.
- */
 @Configuration
-// @EnableRetry
 public class CloudFoundryServiceAutoConfiguration {
 
 	@Bean

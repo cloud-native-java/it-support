@@ -4,10 +4,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.cloudfoundry.operations.CloudFoundryOperations;
 import org.cloudfoundry.operations.applications.*;
-import org.cloudfoundry.operations.services.BindServiceInstanceRequest;
-import org.cloudfoundry.operations.services.CreateServiceInstanceRequest;
-import org.cloudfoundry.operations.services.CreateUserProvidedServiceInstanceRequest;
-import org.cloudfoundry.operations.services.DeleteServiceInstanceRequest;
+import org.cloudfoundry.operations.services.*;
 import org.springframework.beans.factory.config.YamlMapFactoryBean;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.util.Assert;
@@ -15,35 +12,29 @@ import org.springframework.util.StringUtils;
 import reactor.core.publisher.Mono;
 
 import java.io.File;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
 import java.util.*;
 
 /**
- * this should provide all the coarse grained
- * functionality we need to be rid of the various
- * {@literal deploy.sh} files laying around the
- * file system.
+ * this should provide all the coarse
+ * grained functionality we need to be
+ * rid of the various
+ * {@literal deploy.sh} files laying
+ * around the file system.
  *
- * @author <a href="mailto:josh@joshlong.com">Josh
+ * @author <a
+ * href="mailto:josh@joshlong.com">Josh
  * Long</a>
  */
 public class CloudFoundryService {
 
-	private final CloudFoundryOperations cf;
+	private Sanitizer sanitizer = new Sanitizer();
 	private Log log = LogFactory.getLog(getClass());
+	private final CloudFoundryOperations cf;
 
 	public CloudFoundryService(CloudFoundryOperations cf) {
 		this.cf = cf;
-	}
-
-	private static <T> Optional<T> optionalIfExists(Map m, String k, Class<T> tClass) {
-		return Optional.ofNullable(ifExists(m, k, tClass));
-	}
-
-	private static <T> T ifExists(Map m, String k, Class<T> tClass) {
-		if (m.containsKey(k)) {
-			return tClass.cast(m.get(k));
-		}
-		return null;
 	}
 
 	public void destroyOrphanedRoutes() {
@@ -94,18 +85,19 @@ public class CloudFoundryService {
 
 	public boolean serviceExists(String instanceName) {
 		Mono<Boolean> mono = this.cf.services().listInstances()
-				.filter(si -> si.getName().equals(instanceName)).singleOrEmpty().hasElement(); // if
-																																												// it
-																																												// has
-																																												// an
-																																												// element,
-																																												// then
-																																												// the
-																																												// service
-																																												// exists,
-																																												// right?
-
+				.filter(si -> si.getName().equals(instanceName)).singleOrEmpty().hasElement();
 		return mono.block();
+	}
+
+	private static <T> Optional<T> optionalIfExists(Map m, String k, Class<T> tClass) {
+		return Optional.ofNullable(ifExists(m, k, tClass));
+	}
+
+	private static <T> T ifExists(Map m, String k, Class<T> tClass) {
+		if (m.containsKey(k)) {
+			return tClass.cast(m.get(k));
+		}
+		return null;
 	}
 
 	public void pushApplicationUsingManifest(File jarFile, ApplicationManifest manifest) {
@@ -115,20 +107,9 @@ public class CloudFoundryService {
 
 		PushApplicationRequest request = fromApplicationManifest(jarFile, manifest);
 
-		if (this.applicationExists(manifest.getName())) {
-			cf.applications()
-					.delete(
-							DeleteApplicationRequest.builder().name(manifest.getName())
-									.deleteRoutes(true).build()).block();
-			log.debug("deleted the existing application instance " + manifest.getName()
-					+ "if it exists.");
-		}
 		cf.applications().push(request).block();
 
 		if (request.getNoStart() != null && request.getNoStart()) {
-			// todo either we need to bind the services
-			// or the environment variables.
-			// todo so let's be sure to handle that
 			Assert.notNull(manifest,
 					"the manifest for application " + jarFile.getAbsolutePath()
 							+ " is null! Can't proceed.");
@@ -153,8 +134,9 @@ public class CloudFoundryService {
 											SetEnvironmentVariableApplicationRequest.builder()
 													.name(request.getName()).variableName(e).variableValue("" + v)
 													.build()).block();
-							log.debug("set environment variable '" + e + "' to the value '" + v
-									+ "' for application " + request.getName());
+							log.debug("set environment variable '" + e + "' to the value '"
+									+ this.sanitizer.sanitize(e, "" + v) + "' for application "
+									+ request.getName());
 						});
 			}
 			cf.applications()
@@ -170,13 +152,62 @@ public class CloudFoundryService {
 
 	public void createUserProvidedServiceFromApplication(String appName) {
 		String urlForApplication = this.urlForApplication(appName);
-		this.destroyServiceIfExists(appName);
-		this.cf
-				.services()
-				.createUserProvidedInstance(
-						CreateUserProvidedServiceInstanceRequest.builder().name(appName)
-								.credentials(Collections.singletonMap("uri", urlForApplication)).build())
-				.block();
+		boolean exists = this.serviceExists(appName);
+		if (!exists) {
+			this.cf
+					.services()
+					.createUserProvidedInstance(
+							CreateUserProvidedServiceInstanceRequest.builder().name(appName)
+									.credentials(Collections.singletonMap("uri", urlForApplication))
+									.build()).block();
+		}
+		else {
+			this.cf
+					.services()
+					.updateUserProvidedInstance(
+							UpdateUserProvidedServiceInstanceRequest.builder()
+									.userProvidedServiceInstanceName(appName)
+									.credentials(Collections.singletonMap("uri", urlForApplication))
+									.build()).block();
+		}
+	}
+
+	/**
+	 * @apiNote do <em>not</em> use this
+	 * class!
+	 */
+	private static class Sanitizer {
+
+		private final Log log = LogFactory.getLog(getClass());
+		private Method sanitizeMethod;
+		private Object sanitizerObject;
+
+		Sanitizer() {
+			try {
+				String sanitizerClass = "org.springframework.boot.actuate.endpoint.Sanitizer";
+				Class<?> sanitizer = Class.forName(sanitizerClass);
+				Constructor<?> ctor = sanitizer.getDeclaredConstructor();
+				ctor.setAccessible(true);
+				this.sanitizerObject = ctor.newInstance();
+				this.sanitizeMethod = sanitizer.getMethod("sanitize", String.class, Object.class);
+				this.sanitizeMethod.setAccessible(true);
+			}
+			catch (Throwable th) {
+				this.log.error(th);
+			}
+		}
+
+		String sanitize(String k, String v) {
+			try {
+				return String.class.cast(sanitizeMethod.invoke(sanitizerObject,
+						"" + k.toLowerCase(), v));
+			}
+			catch (Exception e) {
+				log.debug("couldn't sanitize value for key " + k + ".");
+				log.error(e);
+			}
+			return v;
+		}
 	}
 
 	public void pushApplicationAndCreateUserDefinedServiceUsingManifest(File manifestFile) {
