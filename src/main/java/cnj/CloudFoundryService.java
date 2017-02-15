@@ -10,27 +10,17 @@ import org.springframework.core.io.FileSystemResource;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 import reactor.core.publisher.Mono;
-
 import java.io.File;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.*;
 
-/**
- * this should provide all the coarse
- * grained functionality we need to be
- * rid of the various
- * {@literal deploy.sh} files laying
- * around the file system.
- *
- * @author <a
- * href="mailto:josh@joshlong.com">Josh
- * Long</a>
- */
 public class CloudFoundryService {
 
 	private Sanitizer sanitizer = new Sanitizer();
+
 	private Log log = LogFactory.getLog(getClass());
+
 	private final CloudFoundryOperations cf;
 
 	public CloudFoundryService(CloudFoundryOperations cf) {
@@ -43,17 +33,14 @@ public class CloudFoundryService {
 
 	public void destroyApplicationUsingManifest(File file) {
 		Optional.ofNullable(file).ifPresent(
-				manifestFile -> applicationManifestFrom(manifestFile).forEach(
-						(f, am) -> {
-
-							destroyApplicationIfExists(am.getName());
-							destroyServiceIfExistsSafely(am.getName());
-							Optional.ofNullable(am.getServices()).ifPresent(
-									svcs -> svcs.forEach(this::destroyServiceIfExistsSafely));
-
-							destroyOrphanedRoutes();
-						}));
-
+			manifestFile -> applicationManifestFrom(manifestFile).forEach(
+				(f, am) -> {
+					destroyApplicationIfExists(am.getName());
+					destroyServiceIfExistsSafely(am.getName());
+					Optional.ofNullable(am.getServices()).ifPresent(
+						svcs -> svcs.forEach(this::destroyServiceIfExistsSafely));
+					destroyOrphanedRoutes();
+				}));
 	}
 
 	private void destroyServiceIfExistsSafely(String svcName) {
@@ -61,22 +48,23 @@ public class CloudFoundryService {
 			this.destroyServiceIfExists(svcName);
 		}
 		catch (Throwable th) {
-			log.debug("couldn't destroy " + svcName
-					+ ". This could be because of a number of reasons, "
-					+ "including that some other service is bound to this application.");
+			log.debug(String.format("couldn't destroy the service %s. "
+				+ "Are other applications still bound to it?", svcName));
 		}
 	}
 
-	public Map<String, ApplicationManifest> applicationManifestsFrom(File... files) {
+	public Map<String, ApplicationManifest> applicationManifestsFrom(
+		File... files) {
 		Map<String, ApplicationManifest> manifestMap = new HashMap<>();
 		for (File f : files) {
-			this.applicationManifestFrom(f).forEach((ff, m) -> manifestMap.put(m.getName(), m));
+			this.applicationManifestFrom(f).forEach(
+				(ff, m) -> manifestMap.put(m.getName(), m));
 		}
 		return manifestMap;
 	}
 
-	public void createServiceIfMissing(String svcName, String planName, String instanceName) {
-
+	public void createServiceIfMissing(String svcName, String planName,
+		String instanceName) {
 		if (!this.serviceExists(instanceName)) {
 			log.debug("could not find " + svcName + ", so creating it.");
 			this.createService(svcName, planName, instanceName);
@@ -85,11 +73,13 @@ public class CloudFoundryService {
 
 	public boolean serviceExists(String instanceName) {
 		Mono<Boolean> mono = this.cf.services().listInstances()
-				.filter(si -> si.getName().equals(instanceName)).singleOrEmpty().hasElement();
+			.filter(si -> si.getName().equals(instanceName)).singleOrEmpty()
+			.hasElement();
 		return mono.block();
 	}
 
-	private static <T> Optional<T> optionalIfExists(Map m, String k, Class<T> tClass) {
+	private static <T> Optional<T> optionalIfExists(Map m, String k,
+		Class<T> tClass) {
 		return Optional.ofNullable(ifExists(m, k, tClass));
 	}
 
@@ -100,54 +90,51 @@ public class CloudFoundryService {
 		return null;
 	}
 
-	public void pushApplicationUsingManifest(File jarFile, ApplicationManifest manifest) {
-
+	public void pushApplicationUsingManifest(File jarFile,
+		ApplicationManifest manifest) {
 		log.debug("pushing application " + jarFile.getAbsolutePath()
-				+ " using manifest file " + manifest.toString());
-
+			+ " using manifest file " + manifest.toString());
 		PushApplicationRequest request = fromApplicationManifest(jarFile, manifest);
-
 		cf.applications().push(request).block();
-
 		if (request.getNoStart() != null && request.getNoStart()) {
 			Assert.notNull(manifest,
-					"the manifest for application " + jarFile.getAbsolutePath()
-							+ " is null! Can't proceed.");
-
+				"the manifest for application " + jarFile.getAbsolutePath()
+					+ " is null! Can't proceed.");
 			if (manifest.getServices() != null) {
-
 				manifest.getServices().forEach(
-						svc -> {
-							cf.services()
-									.bind(
-											BindServiceInstanceRequest.builder()
-													.applicationName(request.getName()).serviceInstanceName(svc)
-													.build()).block();
-							log.debug("bound service '" + svc + "' to '" + request.getName() + "'.");
-						});
+					svc -> {
+						cf.services()
+							.bind(
+								BindServiceInstanceRequest.builder()
+									.applicationName(request.getName()).serviceInstanceName(svc)
+									.build()).block();
+						log.debug("bound service '" + svc + "' to '" + request.getName()
+							+ "'.");
+					});
 			}
 			if (manifest.getEnvironmentVariables() != null) {
 				manifest.getEnvironmentVariables().forEach(
-						(e, v) -> {
-							cf.applications()
-									.setEnvironmentVariable(
-											SetEnvironmentVariableApplicationRequest.builder()
-													.name(request.getName()).variableName(e).variableValue("" + v)
-													.build()).block();
-							log.debug("set environment variable '" + e + "' to the value '"
-									+ this.sanitizer.sanitize(e, "" + v) + "' for application "
-									+ request.getName());
-						});
+					(e, v) -> {
+						cf.applications()
+							.setEnvironmentVariable(
+								SetEnvironmentVariableApplicationRequest.builder()
+									.name(request.getName()).variableName(e)
+									.variableValue("" + v).build()).block();
+						log.debug("set environment variable '" + e + "' to the value '"
+							+ this.sanitizer.sanitize(e, "" + v) + "' for application "
+							+ request.getName());
+					});
 			}
 			cf.applications()
-					.start(StartApplicationRequest.builder().name(request.getName()).build())
-					.block();
+				.start(
+					StartApplicationRequest.builder().name(request.getName()).build())
+				.block();
 		}
 	}
 
 	public void pushApplicationUsingManifest(File manifestFile) {
-		this.applicationManifestFrom(manifestFile)
-				.forEach(this::pushApplicationUsingManifest);
+		this.applicationManifestFrom(manifestFile).forEach(
+			this::pushApplicationUsingManifest);
 	}
 
 	public void createUserProvidedServiceFromApplication(String appName) {
@@ -155,31 +142,29 @@ public class CloudFoundryService {
 		boolean exists = this.serviceExists(appName);
 		if (!exists) {
 			this.cf
-					.services()
-					.createUserProvidedInstance(
-							CreateUserProvidedServiceInstanceRequest.builder().name(appName)
-									.credentials(Collections.singletonMap("uri", urlForApplication))
-									.build()).block();
+				.services()
+				.createUserProvidedInstance(
+					CreateUserProvidedServiceInstanceRequest.builder().name(appName)
+						.credentials(Collections.singletonMap("uri", urlForApplication))
+						.build()).block();
 		}
 		else {
 			this.cf
-					.services()
-					.updateUserProvidedInstance(
-							UpdateUserProvidedServiceInstanceRequest.builder()
-									.userProvidedServiceInstanceName(appName)
-									.credentials(Collections.singletonMap("uri", urlForApplication))
-									.build()).block();
+				.services()
+				.updateUserProvidedInstance(
+					UpdateUserProvidedServiceInstanceRequest.builder()
+						.userProvidedServiceInstanceName(appName)
+						.credentials(Collections.singletonMap("uri", urlForApplication))
+						.build()).block();
 		}
 	}
 
-	/**
-	 * @apiNote do <em>not</em> use this
-	 * class!
-	 */
 	private static class Sanitizer {
 
 		private final Log log = LogFactory.getLog(getClass());
+
 		private Method sanitizeMethod;
+
 		private Object sanitizerObject;
 
 		Sanitizer() {
@@ -189,7 +174,8 @@ public class CloudFoundryService {
 				Constructor<?> ctor = sanitizer.getDeclaredConstructor();
 				ctor.setAccessible(true);
 				this.sanitizerObject = ctor.newInstance();
-				this.sanitizeMethod = sanitizer.getMethod("sanitize", String.class, Object.class);
+				this.sanitizeMethod = sanitizer.getMethod("sanitize", String.class,
+					Object.class);
 				this.sanitizeMethod.setAccessible(true);
 			}
 			catch (Throwable th) {
@@ -200,7 +186,7 @@ public class CloudFoundryService {
 		String sanitize(String k, String v) {
 			try {
 				return String.class.cast(sanitizeMethod.invoke(sanitizerObject,
-						"" + k.toLowerCase(), v));
+					"" + k.toLowerCase(), v));
 			}
 			catch (Exception e) {
 				log.debug("couldn't sanitize value for key " + k + ".");
@@ -210,39 +196,40 @@ public class CloudFoundryService {
 		}
 	}
 
-	public void pushApplicationAndCreateUserDefinedServiceUsingManifest(File manifestFile) {
+	public void pushApplicationAndCreateUserDefinedServiceUsingManifest(
+		File manifestFile) {
 		Map<File, ApplicationManifest> applicationManifestMap = this
-				.applicationManifestFrom(manifestFile);
+			.applicationManifestFrom(manifestFile);
 		applicationManifestMap
-				.forEach(this::pushApplicationAndCreateUserDefinedServiceUsingManifest);
+			.forEach(this::pushApplicationAndCreateUserDefinedServiceUsingManifest);
 	}
 
 	public void pushApplicationAndCreateUserDefinedServiceUsingManifest(File jar,
-			ApplicationManifest manifest) {
+		ApplicationManifest manifest) {
 		this.pushApplicationUsingManifest(jar, manifest);
 		this.createUserProvidedServiceFromApplication(manifest.getName());
 	}
 
-	public Map<File, ApplicationManifest> applicationManifestFrom(File manifestFile) {
+	public Map<File, ApplicationManifest> applicationManifestFrom(
+		File manifestFile) {
 		log.debug("manifest: " + manifestFile.getAbsolutePath());
 		YamlMapFactoryBean yamlMapFactoryBean = new YamlMapFactoryBean();
 		yamlMapFactoryBean.setResources(new FileSystemResource(manifestFile));
 		yamlMapFactoryBean.afterPropertiesSet();
 		Map<String, Object> manifestYmlFile = yamlMapFactoryBean.getObject();
-
 		ApplicationManifest.Builder builder = ApplicationManifest.builder();
-
-		Map lhm = Map.class.cast(List.class.cast(manifestYmlFile.get("applications"))
-				.iterator().next());
+		Map lhm = Map.class.cast(List.class
+			.cast(manifestYmlFile.get("applications")).iterator().next());
 		optionalIfExists(lhm, "name", String.class).ifPresent(builder::name);
-		optionalIfExists(lhm, "buildpack", String.class).ifPresent(builder::buildpack);
+		optionalIfExists(lhm, "buildpack", String.class).ifPresent(
+			builder::buildpack);
 		optionalIfExists(lhm, "memory", String.class).ifPresent(mem -> {
-			// TODO
-				builder.memory(1024);
-			});
+			builder.memory(1024);
+		});
 		optionalIfExists(lhm, "disk", Integer.class).ifPresent(builder::disk);
 		optionalIfExists(lhm, "domains", String.class).ifPresent(builder::domain);
-		optionalIfExists(lhm, "instances", Integer.class).ifPresent(builder::instances);
+		optionalIfExists(lhm, "instances", Integer.class).ifPresent(
+			builder::instances);
 		optionalIfExists(lhm, "host", String.class).ifPresent(host -> {
 			String rw = "${random-word}";
 			if (host.contains(rw)) {
@@ -261,27 +248,21 @@ public class CloudFoundryService {
 			}
 		});
 		optionalIfExists(lhm, ("env"), Map.class).ifPresent(
-				builder::putAllEnvironmentVariables);// this
-																							// returns
-																							// map
+			builder::putAllEnvironmentVariables);
 		Map<File, ApplicationManifest> deployManifest = new HashMap<>();
 		optionalIfExists(lhm, "path", String.class).map(
-				p -> new File(manifestFile.getParentFile(), p)).ifPresent(appPath -> {
+			p -> new File(manifestFile.getParentFile(), p)).ifPresent(appPath -> {
 			deployManifest.put(appPath, builder.build());
 		});
 		return deployManifest;
-
 	}
 
 	public PushApplicationRequest fromApplicationManifest(File path,
-			ApplicationManifest applicationManifest) {
-
+		ApplicationManifest applicationManifest) {
 		PushApplicationRequest.Builder builder = PushApplicationRequest.builder();
-
 		builder.application(path.toPath());
-
 		if (applicationManifest.getHosts() != null
-				&& applicationManifest.getHosts().size() > 0) {
+			&& applicationManifest.getHosts().size() > 0) {
 			builder.host(applicationManifest.getHosts().iterator().next());
 		}
 		if (StringUtils.hasText(applicationManifest.getBuildpack())) {
@@ -300,15 +281,15 @@ public class CloudFoundryService {
 			builder.name(applicationManifest.getName());
 		}
 		if (applicationManifest.getDomains() != null
-				&& applicationManifest.getDomains().size() > 0) {
+			&& applicationManifest.getDomains().size() > 0) {
 			builder.domain(applicationManifest.getDomains().iterator().next());
 		}
 		if (applicationManifest.getEnvironmentVariables() != null
-				&& applicationManifest.getEnvironmentVariables().size() > 0) {
+			&& applicationManifest.getEnvironmentVariables().size() > 0) {
 			builder.noStart(true);
 		}
 		if (applicationManifest.getServices() != null
-				&& applicationManifest.getServices().size() > 0) {
+			&& applicationManifest.getServices().size() > 0) {
 			builder.noStart(true);
 		}
 		return builder.build();
@@ -316,14 +297,14 @@ public class CloudFoundryService {
 
 	public void createService(String svcName, String planName, String instanceName) {
 		log.debug("creating service " + svcName + " with plan " + planName
-				+ " and instance name " + instanceName);
+			+ " and instance name " + instanceName);
 		if (!this.serviceExists(instanceName)) {
 			this.cf
-					.services()
-					.createInstance(
-							CreateServiceInstanceRequest.builder().planName(planName)
-									.serviceInstanceName(instanceName).serviceName(svcName).build())
-					.block();
+				.services()
+				.createInstance(
+					CreateServiceInstanceRequest.builder().planName(planName)
+						.serviceInstanceName(instanceName).serviceName(svcName).build())
+				.block();
 		}
 	}
 
@@ -333,32 +314,36 @@ public class CloudFoundryService {
 
 	public String urlForApplication(String appName, boolean https) {
 		return "http"
-				+ (https ? "s" : "")
-				+ "://"
-				+ this.cf.applications()
-						.get(GetApplicationRequest.builder().name(appName).build())
-						.map(ad -> (ad.getUrls().stream()).findFirst().get()).block();
+			+ (https ? "s" : "")
+			+ "://"
+			+ this.cf.applications()
+				.get(GetApplicationRequest.builder().name(appName).build())
+				.map(ad -> (ad.getUrls().stream()).findFirst().get()).block();
 	}
 
 	public boolean destroyApplicationIfExists(String appName) {
 		if (this.applicationExists(appName)) {
 			this.cf.applications()
-					.delete(DeleteApplicationRequest.builder().name(appName).build()).block();
+				.delete(DeleteApplicationRequest.builder().name(appName).build())
+				.block();
 			log.debug("destroyed application " + appName);
 		}
 		return !this.applicationExists(appName);
 	}
 
 	public boolean applicationExists(String appName) {
-		return this.cf.applications().list().filter(si -> si.getName().equals(appName))
-				.singleOrEmpty().hasElement().block();
+		return this.cf.applications().list()
+			.filter(si -> si.getName().equals(appName)).singleOrEmpty().hasElement()
+			.block();
 	}
 
 	public boolean destroyServiceIfExists(String instance) {
 		if (this.serviceExists(instance)) {
-			this.cf.services()
-					.deleteInstance(DeleteServiceInstanceRequest.builder().name(instance).build())
-					.block();
+			this.cf
+				.services()
+				.deleteInstance(
+					DeleteServiceInstanceRequest.builder().name(instance).build())
+				.block();
 			log.debug("destroyed service " + instance);
 			return !this.serviceExists(instance);
 		}

@@ -28,29 +28,31 @@ public class CloudFoundryServiceAutoConfiguration {
 		RetryTemplate rt = new RetryTemplate();
 		rt.setBackOffPolicy(new ExponentialBackOffPolicy());
 		rt.setRetryPolicy(new SimpleRetryPolicy(20, Collections.singletonMap(
-				RuntimeException.class, true)));
+			RuntimeException.class, true)));
 		return rt;
 	}
 
 	@Bean
 	@ConditionalOnMissingBean
 	public ReactorCloudFoundryClient cloudFoundryClient(
-			ConnectionContext connectionContext, TokenProvider tokenProvider) {
-		return ReactorCloudFoundryClient.builder().connectionContext(connectionContext)
-				.tokenProvider(tokenProvider).build();
+		ConnectionContext connectionContext, TokenProvider tokenProvider) {
+		return ReactorCloudFoundryClient.builder()
+			.connectionContext(connectionContext).tokenProvider(tokenProvider)
+			.build();
 	}
 
 	@Bean
 	@ConditionalOnMissingBean
-	public ReactorDopplerClient dopplerClient(ConnectionContext connectionContext,
-			TokenProvider tokenProvider) {
+	public ReactorDopplerClient dopplerClient(
+		ConnectionContext connectionContext, TokenProvider tokenProvider) {
 		return ReactorDopplerClient.builder().connectionContext(connectionContext)
-				.tokenProvider(tokenProvider).build();
+			.tokenProvider(tokenProvider).build();
 	}
 
 	@Bean
 	@ConditionalOnMissingBean
-	public DefaultConnectionContext connectionContext(@Value("${cf.api}") String apiHost) {
+	public DefaultConnectionContext connectionContext(
+		@Value("${cf.api}") String apiHost) {
 		if (apiHost.contains("://")) {
 			apiHost = apiHost.split("://")[1];
 		}
@@ -59,29 +61,29 @@ public class CloudFoundryServiceAutoConfiguration {
 
 	@Bean
 	@ConditionalOnMissingBean
-	ReactorUaaClient uaaClient(ConnectionContext connectionContext,
-			TokenProvider tokenProvider) {
-		return ReactorUaaClient.builder().connectionContext(connectionContext)
-				.tokenProvider(tokenProvider).build();
+	ReactorUaaClient uaaClient(ConnectionContext ctx, TokenProvider tokenProvider) {
+		return ReactorUaaClient.builder().connectionContext(ctx)
+			.tokenProvider(tokenProvider).build();
 	}
 
 	@Bean
 	@ConditionalOnMissingBean
-	public PasswordGrantTokenProvider tokenProvider(@Value("${cf.user}") String username,
-			@Value("${cf.password}") String password) {
-		return PasswordGrantTokenProvider.builder().password(password).username(username)
-				.build();
+	public PasswordGrantTokenProvider tokenProvider(
+		@Value("${cf.user}") String username,
+		@Value("${cf.password}") String password) {
+		return PasswordGrantTokenProvider.builder().password(password)
+			.username(username).build();
 	}
 
 	@Bean
 	@ConditionalOnMissingBean
 	public DefaultCloudFoundryOperations cloudFoundryOperations(
-			CloudFoundryClient cloudFoundryClient, ReactorDopplerClient dopplerClient,
-			ReactorUaaClient uaaClient, @Value("${cf.org}") String organization,
-			@Value("${cf.space}") String space) {
-		return DefaultCloudFoundryOperations.builder().cloudFoundryClient(cloudFoundryClient)
-				.dopplerClient(dopplerClient).uaaClient(uaaClient).organization(organization)
-				.space(space).build();
+		CloudFoundryClient cloudFoundryClient, ReactorDopplerClient dopplerClient,
+		ReactorUaaClient uaaClient, @Value("${cf.org}") String organization,
+		@Value("${cf.space}") String space) {
+		return DefaultCloudFoundryOperations.builder()
+			.cloudFoundryClient(cloudFoundryClient).dopplerClient(dopplerClient)
+			.uaaClient(uaaClient).organization(organization).space(space).build();
 	}
 
 	@Bean

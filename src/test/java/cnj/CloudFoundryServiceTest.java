@@ -30,14 +30,18 @@ import static org.junit.Assert.assertTrue;
 public class CloudFoundryServiceTest {
 
 	private String svc = "p-mysql", plan = "100mb",
-			instance = "cf-it-greetings-service-mysql";
+		instance = "cf-it-greetings-service-mysql";
 
 	private File manifestFile;
+
 	private File jarFile;
+
 	@Autowired
 	private CloudFoundryService cloudFoundryService;
+
 	@Autowired
 	private CloudFoundryOperations cf;
+
 	private Log log = LogFactory.getLog(getClass());
 
 	public CloudFoundryServiceTest() throws IOException {
@@ -47,24 +51,24 @@ public class CloudFoundryServiceTest {
 
 	private static void sync(File og, File dst) throws Throwable {
 		Assert.assertTrue("the input file should exist.", og.exists());
-		Assert.assertTrue("the output file should *not* exist.",
-				!dst.exists() || dst.delete());
+		Assert.assertTrue("the output file should *not* exist.", !dst.exists()
+			|| dst.delete());
 		Files.copy(og.toPath(), dst.toPath());
 	}
 
 	@Before
 	public void setup() throws Throwable {
-		sync(new ClassPathResource("/sample-app/manifest.yml").getFile(), this.manifestFile);
+		sync(new ClassPathResource("/sample-app/manifest.yml").getFile(),
+			this.manifestFile);
 		sync(new ClassPathResource("/sample-app/hi.jar").getFile(), jarFile);
 		String txt = Files.readAllLines(this.manifestFile.toPath()).stream()
-				.collect(Collectors.joining(System.lineSeparator()));
+			.collect(Collectors.joining(System.lineSeparator()));
 		this.log.debug("contents of manifest to read? " + txt);
 		this.cloudFoundryService.createServiceIfMissing(svc, plan, instance);
 	}
 
 	@After
 	public void clean() throws Throwable {
-
 		this.cloudFoundryService.destroyApplicationUsingManifest(this.manifestFile);
 	}
 
@@ -73,25 +77,26 @@ public class CloudFoundryServiceTest {
 		try {
 
 			Map<File, ApplicationManifest> applicationManifestMap = this.cloudFoundryService
-					.applicationManifestFrom(this.manifestFile);
+				.applicationManifestFrom(this.manifestFile);
 
-			String appName = applicationManifestMap.values().iterator().next().getName();
+			String appName = applicationManifestMap.values().iterator().next()
+				.getName();
 
 			log.info("attempting to push the application " + appName
-					+ " as a user-provided-service (also called " + appName + ")");
+				+ " as a user-provided-service (also called " + appName + ")");
 
 			Assert.assertTrue(!this.cloudFoundryService.applicationExists(appName));
 			Assert.assertTrue(!this.cloudFoundryService.serviceExists(appName));
 
 			applicationManifestMap
-					.forEach(this.cloudFoundryService::pushApplicationAndCreateUserDefinedServiceUsingManifest);
+				.forEach(this.cloudFoundryService::pushApplicationAndCreateUserDefinedServiceUsingManifest);
 
 			Assert.assertTrue(this.cloudFoundryService.applicationExists(appName));
 			Assert.assertTrue(this.cloudFoundryService.serviceExists(appName));
 		}
 		catch (Exception e) {
 			log.error("error when trying to push application using manifest file "
-					+ manifestFile.getAbsolutePath(), e);
+				+ manifestFile.getAbsolutePath(), e);
 			throw new RuntimeException("oops! " + e);
 		}
 	}
@@ -100,9 +105,9 @@ public class CloudFoundryServiceTest {
 	public void applicationManifestFrom() throws Exception {
 
 		Map<File, ApplicationManifest> manifestMap = this.cloudFoundryService
-				.applicationManifestFrom(manifestFile);
+			.applicationManifestFrom(manifestFile);
 		manifestMap.forEach((jarFile, manifest) -> assertTrue(
-				"the .jar file to push must exist.", jarFile.exists()));
+			"the .jar file to push must exist.", jarFile.exists()));
 
 		if (manifestMap.size() == 0) {
 			Assert.fail();
@@ -112,19 +117,19 @@ public class CloudFoundryServiceTest {
 	@Test
 	public void urlForApplication() throws Exception {
 		Flux<ApplicationSummary> summaryFlux = this.cf.applications().list()
-				.filter(ad -> ad.getUrls().size() > 0);
+			.filter(ad -> ad.getUrls().size() > 0);
 		ApplicationSummary applicationSummary = summaryFlux.blockFirst();
 		String urlForApplication = this.cloudFoundryService.urlForApplication(
-				applicationSummary.getName()).toLowerCase();
-		boolean matches = applicationSummary.getUrls().stream().map(String::toLowerCase)
-				.filter(urlForApplication::contains).count() >= 1;
+			applicationSummary.getName()).toLowerCase();
+		boolean matches = applicationSummary.getUrls().stream()
+			.map(String::toLowerCase).filter(urlForApplication::contains).count() >= 1;
 		assertTrue("one of the returned URLs should match.", matches);
 	}
 
 	@Test
 	public void ensureServiceIsAvailable() throws Exception {
 		assertTrue("the " + instance + " service should exist.",
-				this.cloudFoundryService.serviceExists(instance));
+			this.cloudFoundryService.serviceExists(instance));
 
 	}
 
