@@ -92,6 +92,13 @@ public class CloudFoundryService {
 		return null;
 	}
 
+	public void pushApplicationUsingManifest(File manifest) {
+
+		this.applicationManifestFrom(manifest)
+				.forEach((f, m) -> this.pushApplicationUsingManifest(f, m, true));
+
+	}
+
 	public void pushApplicationUsingManifest(File jarFile,
 	                                         ApplicationManifest manifest,
 	                                         boolean start) {
