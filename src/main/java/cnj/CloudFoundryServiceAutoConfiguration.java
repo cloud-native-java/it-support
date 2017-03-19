@@ -37,14 +37,13 @@ public class CloudFoundryServiceAutoConfiguration {
  public ReactorCloudFoundryClient cloudFoundryClient(
   ConnectionContext connectionContext, TokenProvider tokenProvider) {
   return ReactorCloudFoundryClient.builder()
-   .connectionContext(connectionContext).tokenProvider(tokenProvider)
-   .build();
+   .connectionContext(connectionContext).tokenProvider(tokenProvider).build();
  }
 
  @Bean
  @ConditionalOnMissingBean
- public ReactorDopplerClient dopplerClient(
-  ConnectionContext connectionContext, TokenProvider tokenProvider) {
+ public ReactorDopplerClient dopplerClient(ConnectionContext connectionContext,
+  TokenProvider tokenProvider) {
   return ReactorDopplerClient.builder().connectionContext(connectionContext)
    .tokenProvider(tokenProvider).build();
  }
@@ -52,29 +51,26 @@ public class CloudFoundryServiceAutoConfiguration {
  @Bean
  @ConditionalOnMissingBean
  public DefaultConnectionContext connectionContext(
-  @Value("${cf.api}") String apiHost , @Value("${cf.skip-ssl-validation:false}") boolean skipSsl) {
+  @Value("${cf.api}") String apiHost,
+  @Value("${cf.skip-ssl-validation:false}") boolean skipSsl) {
   if (apiHost.contains("://")) {
    apiHost = apiHost.split("://")[1];
   }
-  return DefaultConnectionContext
-      .builder()
-      .skipSslValidation(skipSsl)
-      .apiHost(apiHost).build();
+  return DefaultConnectionContext.builder().skipSslValidation(skipSsl)
+   .apiHost(apiHost).build();
  }
 
  @Bean
  @ConditionalOnMissingBean
  ReactorUaaClient uaaClient(ConnectionContext ctx, TokenProvider tokenProvider) {
-  return ReactorUaaClient.builder()
-      .connectionContext(ctx)
+  return ReactorUaaClient.builder().connectionContext(ctx)
    .tokenProvider(tokenProvider).build();
  }
 
  @Bean
  @ConditionalOnMissingBean
  public PasswordGrantTokenProvider tokenProvider(
-  @Value("${cf.user}") String username,
-  @Value("${cf.password}") String password) {
+  @Value("${cf.user}") String username, @Value("${cf.password}") String password) {
   return PasswordGrantTokenProvider.builder().password(password)
    .username(username).build();
  }

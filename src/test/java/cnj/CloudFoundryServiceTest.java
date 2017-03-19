@@ -51,8 +51,8 @@ public class CloudFoundryServiceTest {
 
  private static void sync(File og, File dst) throws Throwable {
   Assert.assertTrue("the input file should exist.", og.exists());
-  Assert.assertTrue("the output file should *not* exist.", !dst.exists()
-   || dst.delete());
+  Assert.assertTrue("the output file should *not* exist.",
+   !dst.exists() || dst.delete());
   Files.copy(og.toPath(), dst.toPath());
  }
 
@@ -79,8 +79,7 @@ public class CloudFoundryServiceTest {
    Map<File, ApplicationManifest> applicationManifestMap = this.cloudFoundryService
     .applicationManifestFrom(this.manifestFile);
 
-   String appName = applicationManifestMap.values().iterator().next()
-    .getName();
+   String appName = applicationManifestMap.values().iterator().next().getName();
 
    log.info("attempting to push the application " + appName
     + " as a user-provided-service (also called " + appName + ")");
