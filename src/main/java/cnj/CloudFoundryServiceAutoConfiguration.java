@@ -52,7 +52,7 @@ public class CloudFoundryServiceAutoConfiguration {
  @Bean
  @ConditionalOnMissingBean
  public DefaultConnectionContext connectionContext(
-  @Value("${cf.api}") String apiHost , @Value("${cf.skip-ssl-validation}") boolean skipSsl) {
+  @Value("${cf.api}") String apiHost , @Value("${cf.skip-ssl-validation:false}") boolean skipSsl) {
   if (apiHost.contains("://")) {
    apiHost = apiHost.split("://")[1];
   }
