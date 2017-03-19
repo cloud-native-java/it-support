@@ -52,17 +52,21 @@ public class CloudFoundryServiceAutoConfiguration {
  @Bean
  @ConditionalOnMissingBean
  public DefaultConnectionContext connectionContext(
-  @Value("${cf.api}") String apiHost) {
+  @Value("${cf.api}") String apiHost , @Value("${cf.skip-ssl-validation}") boolean skipSsl) {
   if (apiHost.contains("://")) {
    apiHost = apiHost.split("://")[1];
   }
-  return DefaultConnectionContext.builder().apiHost(apiHost).build();
+  return DefaultConnectionContext
+      .builder()
+      .skipSslValidation(skipSsl)
+      .apiHost(apiHost).build();
  }
 
  @Bean
  @ConditionalOnMissingBean
  ReactorUaaClient uaaClient(ConnectionContext ctx, TokenProvider tokenProvider) {
-  return ReactorUaaClient.builder().connectionContext(ctx)
+  return ReactorUaaClient.builder()
+      .connectionContext(ctx)
    .tokenProvider(tokenProvider).build();
  }
 
