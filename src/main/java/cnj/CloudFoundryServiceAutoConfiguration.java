@@ -13,24 +13,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.retry.backoff.ExponentialBackOffPolicy;
-import org.springframework.retry.policy.SimpleRetryPolicy;
-import org.springframework.retry.support.RetryTemplate;
-
-import java.util.Collections;
 
 @Configuration
 public class CloudFoundryServiceAutoConfiguration {
-
- @Bean
- @ConditionalOnMissingBean
- public RetryTemplate retryTemplate() {
-  RetryTemplate rt = new RetryTemplate();
-  rt.setBackOffPolicy(new ExponentialBackOffPolicy());
-  rt.setRetryPolicy(new SimpleRetryPolicy(20, Collections.singletonMap(
-   RuntimeException.class, true)));
-  return rt;
- }
 
  @Bean
  @ConditionalOnMissingBean
