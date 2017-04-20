@@ -4,6 +4,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.cloudfoundry.operations.CloudFoundryOperations;
 import org.cloudfoundry.operations.applications.*;
+import org.cloudfoundry.operations.routes.DeleteOrphanedRoutesRequest;
 import org.cloudfoundry.operations.serviceadmin.CreateServiceBrokerRequest;
 import org.cloudfoundry.operations.services.*;
 import org.springframework.beans.factory.config.YamlMapFactoryBean;
@@ -31,7 +32,8 @@ public class CloudFoundryService {
  }
 
  public void destroyOrphanedRoutes() {
-  this.cf.routes().deleteOrphanedRoutes().block();
+  this.cf.routes()
+   .deleteOrphanedRoutes(DeleteOrphanedRoutesRequest.builder().build()).block();
  }
 
  public void destroyApplicationUsingManifest(File file) {
