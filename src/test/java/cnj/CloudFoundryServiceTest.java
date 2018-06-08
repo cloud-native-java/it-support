@@ -1,11 +1,9 @@
 package cnj;
 
 import org.cloudfoundry.operations.CloudFoundryOperations;
-import org.cloudfoundry.operations.applications.ApplicationManifest;
-import org.cloudfoundry.operations.applications.ApplicationManifestUtils;
-import org.cloudfoundry.operations.applications.ApplicationSummary;
-import org.cloudfoundry.operations.applications.PushApplicationRequest;
+import org.cloudfoundry.operations.applications.*;
 import org.cloudfoundry.operations.services.DeleteServiceInstanceRequest;
+import org.cloudfoundry.operations.services.GetServiceInstanceRequest;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -26,6 +24,7 @@ import java.io.*;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 /**
 	* @author <a href="mailto:josh@joshlong.com">Josh Long</a>
@@ -52,6 +51,8 @@ public class CloudFoundryServiceTest {
 		private File testAppManifestFile;
 
 		private final String name = "cnj-it-support-test-app";
+
+		private String applicationName = "cnj-it-support-test-app-with-manifest";
 
 
 		private static void copy(InputStream i, OutputStream o) throws Exception {
@@ -166,29 +167,81 @@ public class CloudFoundryServiceTest {
 					.verifyComplete();
 		}
 
+		private void testGetNameForManifest(Supplier<String> sup) {
+				List<ApplicationManifest> applicationManifests = ApplicationManifestUtils
+					.read(this.testAppManifestFile.toPath());
 
-		/*
+				String appName = applicationManifests
+					.stream()
+					.map(ApplicationManifest::getName)
+					.findFirst()
+					.orElseThrow(() -> new AssertionError("couldn't find the manifest name!!"));
 
+
+				Assert.assertEquals(appName, applicationName);
+
+				String appNameFromService = sup.get();
+				Assert.assertEquals(appNameFromService, appName);
+		}
 
 		@Test
-		public void getNameForManifest() {
+		public void getNameForManifest_File() {
+				testGetNameForManifest(() -> this.cfs.getNameForManifest(this.testAppManifestFile));
+		}
+
+		@Test
+		public void getNameForManifest_Path() {
+				testGetNameForManifest(() -> this.cfs.getNameForManifest(this.testAppManifestFile.toPath()));
+		}
+
+		@Test
+		public void getNameForManifest_ApplicationManifest() {
+				testGetNameForManifest(() -> this.cfs.getNameForManifest(ApplicationManifestUtils.read(this.testAppManifestFile.toPath()).iterator().next()));
 		}
 
 		@Test
 		public void getManifestFor() {
-		}
-
-		@Test
-		public void getNameForManifest1() {
-		}
-
-		@Test
-		public void getNameForManifest2() {
+				ApplicationManifest am = this.cfs.getManifestFor(this.testAppManifestFile.toPath());
+				Assert.assertEquals(am.getName(), this.applicationName);
 		}
 
 		@Test
 		public void pushApplicationAndCreateBackingService() {
-		}*/
+
+				List<ApplicationManifest> applicationManifests = ApplicationManifestUtils
+					.read(this.testAppManifestFile.toPath());
+
+				Assert.assertEquals(applicationManifests.size(), 1);
+
+				Flux<Void> deleteExistingApps = Flux
+					.fromStream(applicationManifests.stream().map(ApplicationManifest::getName))
+					.flatMap(appName -> cfo.services().deleteInstance(DeleteServiceInstanceRequest.builder().name(appName).build()));
+
+				Flux<String> pushApplications = Flux.fromStream(applicationManifests.stream())
+					.flatMap(am -> this.cfs.pushApplicationAndCreateBackingService(am));
+
+				Flux<String> deleteAndPushAndCreateBackingService = deleteExistingApps
+					.thenMany(pushApplications);
+
+				StepVerifier
+					.create(deleteAndPushAndCreateBackingService)
+					.expectNextMatches(appName -> applicationManifests.stream().anyMatch(am -> am.getName().equalsIgnoreCase(appName)))
+					.verifyComplete();
+
+				String name = applicationManifests.iterator().next().getName();
+
+				StepVerifier
+					.create(this.cfo.applications().get(GetApplicationRequest.builder().name(name).build()))
+					.expectNextMatches(ad -> ad.getName().equals(name))
+					.verifyComplete();
+
+				StepVerifier
+					.create(this.cfo.services()
+						.getInstance(GetServiceInstanceRequest.builder().name(name).build()))
+					.expectNextMatches(si -> si.getName().equals(name))
+					.verifyComplete();
+
+		}
 
 		@SpringBootApplication
 		public static class Config {
