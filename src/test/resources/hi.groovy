@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.RestController
 @Grab("spring-boot-starter-actuator")
 class GreetingsRestController {
 
-    @GetMapping("/hi")
+    @GetMapping("/hi/{name}")
     String hi(@PathVariable String name) {
         return "hello ${name}!"
     }

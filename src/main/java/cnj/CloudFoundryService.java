@@ -34,7 +34,7 @@ public class CloudFoundryService {
 					.filter(r -> r.getApplications().contains(appName));
 		}
 
-		public Mono<String> pushApplication(ApplicationManifest manifest) {
+		public Mono<String> pushApplicationWithManifest(ApplicationManifest manifest) {
 				String appName = getNameForManifest(manifest);
 				return cf
 					.applications()
@@ -79,7 +79,7 @@ public class CloudFoundryService {
 		}
 
 		public Mono<String> pushApplicationAndCreateBackingService(ApplicationManifest manifest) {
-				return pushApplication(manifest).flatMap(this::createBackingService);
+				return pushApplicationWithManifest(manifest).flatMap(this::createBackingService);
 		}
 }
 

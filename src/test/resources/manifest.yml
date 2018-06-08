@@ -1,0 +1,6 @@
+---
+applications:
+- name: cnj-it-support-test-app-with-manifest
+  path: ./hi.jar
+  random-route: true
+  buildpack: https://github.com/cloudfoundry/java-buildpack.git
